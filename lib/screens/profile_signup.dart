@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_carparking_app/main.dart';
+import 'package:supabase_carparking_app/repository/parking_repository.dart';
 import '../constants/config.dart';
 import '../constants/constant.dart';
 
@@ -32,7 +34,7 @@ class _ProfileSignUpState extends State<ProfileSignUp> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: Image.asset(appIcon),
+        leading: (supabaseProvider.signedIn) ? null : Image.asset(appIcon),
       ),
       body: Padding(
         padding: const EdgeInsets.only(left: 20, right: 20),
@@ -48,36 +50,52 @@ class _ProfileSignUpState extends State<ProfileSignUp> {
                     color: secondaryColor,
                     fontSize: 16),
               ),
-              const Padding(
-                  padding: EdgeInsets.only(top: 8.0, bottom: 10.0),
-                  child: Text("Set up your user and car profile")),
               Padding(
-                padding: const EdgeInsets.only(bottom: 10.0),
-                child: TextFormField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                      hintText: "Enter Name",
-                      hintStyle: TextStyle(fontSize: 13)),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter name';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              TextFormField(
-                controller: phoneController,
-                decoration: const InputDecoration(
-                    hintText: "Enter Phone Number",
-                    hintStyle: TextStyle(fontSize: 13)),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter phone number';
-                  }
-                  return null;
-                },
-              ),
+                  padding: const EdgeInsets.only(top: 8.0, bottom: 10.0),
+                  child: Column(
+                    children: [
+                      Visibility(
+                          visible: !supabaseProvider.signedIn,
+                          child:
+                              const Text("Set up your user and car profile")),
+                      Visibility(
+                          visible: supabaseProvider.signedIn,
+                          child: const Text("Set up your car profile"))
+                    ],
+                  )),
+              Visibility(
+                  visible: !supabaseProvider.signedIn,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: TextFormField(
+                          controller: nameController,
+                          decoration: const InputDecoration(
+                              hintText: "Enter Name",
+                              hintStyle: TextStyle(fontSize: 13)),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter name';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      TextFormField(
+                        controller: phoneController,
+                        decoration: const InputDecoration(
+                            hintText: "Enter Phone Number",
+                            hintStyle: TextStyle(fontSize: 13)),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter phone number';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  )),
               Padding(
                 padding: const EdgeInsets.only(top: 15.0, bottom: 10.0),
                 child: GestureDetector(
@@ -155,7 +173,21 @@ class _ProfileSignUpState extends State<ProfileSignUp> {
                     children: [
                       ElevatedButton(
                         onPressed: () async {
-                          Navigator.pushNamed(context, "/");
+                          if (!supabaseProvider.signedIn) {
+                            await ParkingRepository().updateUserProfile(
+                                nameController.text,
+                                phoneController.text,
+                                carModelController.text,
+                                carNumberController.text,
+                                dropdownValue,
+                                context);
+                          } else {
+                            await ParkingRepository().addCarProfile(
+                                carModelController.text,
+                                carNumberController.text,
+                                dropdownValue,
+                                context);
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: brandColor,

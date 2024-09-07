@@ -1,4 +1,6 @@
+import 'package:empty_widget/empty_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_carparking_app/repository/parking_repository.dart';
 
 import '../constants/config.dart';
 import '../constants/constant.dart';
@@ -52,24 +54,39 @@ class _ProfileState extends State<Profile> {
                         ))
                   ],
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(top: 20.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "John Doe",
-                        style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.bold),
-                      ),
-                      Icon(
-                        Icons.verified_user,
-                        color: secondaryColor,
-                      )
-                    ],
-                  ),
-                ),
-                const Text("johndoe@gmail.com", style: TextStyle(fontSize: 12)),
+                FutureBuilder(
+                  future: ParkingRepository().getUserProfile(context),
+                  builder: (context, snapshot) {
+                    List<Map<String, dynamic>> response = snapshot.data ?? [];
+
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 20.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                (response.isEmpty) ? "" : response[0]['name'],
+                                style: const TextStyle(
+                                    fontSize: 13, fontWeight: FontWeight.bold),
+                              ),
+                              const Icon(
+                                Icons.verified_user,
+                                color: secondaryColor,
+                              )
+                            ],
+                          ),
+                        ),
+                        Text(
+                            (response.isEmpty)
+                                ? ""
+                                : response[0]['email_address'],
+                            style: const TextStyle(fontSize: 12)),
+                      ],
+                    );
+                  },
+                )
               ],
             ),
             ListTile(
@@ -87,23 +104,51 @@ class _ProfileState extends State<Profile> {
                           width: MediaQuery.of(context).size.width,
                           height: 200,
                           padding: const EdgeInsets.only(top: 10, left: 20),
-                          child: ListView.builder(
-                              itemCount: 4,
-                              itemBuilder: (BuildContext context, int index) {
-                                return Text.rich(TextSpan(
-                                  children: <InlineSpan>[
-                                    WidgetSpan(
-                                        child: Padding(
-                                      padding:
-                                          const EdgeInsets.only(right: 8.0),
-                                      child: Image.asset(appIcon),
-                                    )),
-                                    const TextSpan(
-                                      text: "4X456PSD",
-                                    ),
-                                  ],
-                                ));
-                              }));
+                          child: FutureBuilder(
+                            future: ParkingRepository().getMyVehicles(context),
+                            builder: (context, snapshot) {
+                              List<Map<String, dynamic>> response =
+                                  snapshot.data ?? [];
+
+                              return (response.isEmpty)
+                                  ? SizedBox(
+                                      width: 300,
+                                      child: EmptyWidget(
+                                        image: null,
+                                        packageImage: PackageImage.Image_1,
+                                        title: appName,
+                                        subTitle: 'No vehicles added yet',
+                                        titleTextStyle: const TextStyle(
+                                            fontSize: 18,
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.w500),
+                                        subtitleTextStyle: const TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    )
+                                  : ListView.builder(
+                                      itemCount: response.length,
+                                      itemBuilder:
+                                          (BuildContext context, int index) {
+                                        return Text.rich(TextSpan(
+                                          children: <InlineSpan>[
+                                            WidgetSpan(
+                                                child: Padding(
+                                              padding: const EdgeInsets.only(
+                                                  right: 8.0),
+                                              child: Image.asset(appIcon),
+                                            )),
+                                            TextSpan(
+                                              text: response[index]
+                                                  ['car_number'],
+                                            ),
+                                          ],
+                                        ));
+                                      });
+                            },
+                          ));
                     });
               },
             ),

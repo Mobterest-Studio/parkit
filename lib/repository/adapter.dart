@@ -61,7 +61,7 @@ abstract class Adapter {
       BuildContext context, int parkingFloorId, int parkingAreaId);
 
   /// Update availability of a specific parking slot
-  updateSlotAvailability(int parkingSlotId);
+  updateSlotAvailability(int parkingSlotId );
 
   /// Get total amount of parking fee paid by an existing user
   Future getTotalFee(BuildContext context);

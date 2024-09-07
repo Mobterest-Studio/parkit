@@ -1,6 +1,9 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:supabase_carparking_app/arguments.dart';
+import 'package:supabase_carparking_app/repository/parking_repository.dart';
+import 'package:supabase_carparking_app/screens/parking_details.dart';
 import '../constants/config.dart';
 import '../constants/constant.dart';
 
@@ -9,11 +12,15 @@ class ParkingArea extends StatefulWidget {
 
   @override
   State<ParkingArea> createState() => _ParkingAreaState();
+
+  static const routeName = "/area";
 }
 
 class _ParkingAreaState extends State<ParkingArea> {
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)!.settings.arguments as ParkingArguments;
+
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -34,42 +41,51 @@ class _ParkingAreaState extends State<ParkingArea> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "Downtown Plaza",
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              Text(
+                args.parkingarea['name'],
+                style:
+                    const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
               ),
-              const Align(
+              Align(
                 alignment: Alignment.centerRight,
                 child: Text(
-                  "\$20/hr",
-                  style: TextStyle(
+                  "\$${args.parkingarea['parking_fee']}/hr",
+                  style: const TextStyle(
                     fontSize: 16,
                     color: brandColor,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.map),
+                  const Icon(Icons.map),
                   Text(
-                    "123 Main St, New York, NY 10001",
-                    style: TextStyle(fontSize: 13),
+                    args.parkingarea['location_text'],
+                    style: const TextStyle(fontSize: 13),
                   )
                 ],
               ),
-              const Padding(
-                padding: EdgeInsets.only(top: 8.0),
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
                 child: Row(
                   children: [
-                    Icon(Icons.share_location),
+                    const Icon(Icons.share_location),
                     Padding(
-                        padding: EdgeInsets.only(left: 8.0),
-                        child: Text(
-                          "5 Slots available",
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: secondaryColor),
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: FutureBuilder(
+                          future: ParkingRepository().getAvailableSlots(
+                              context, args.parkingarea['id']),
+                          builder: (context, snapshot) {
+                            int availableSlots = snapshot.data ?? 0;
+
+                            return Text(
+                              "$availableSlots Slots available",
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: secondaryColor),
+                            );
+                          },
                         ))
                   ],
                 ),
@@ -79,7 +95,7 @@ class _ParkingAreaState extends State<ParkingArea> {
                 child: Row(
                   children: [
                     RatingBar.builder(
-                      initialRating: 4,
+                      initialRating: args.parkingarea['rating'],
                       minRating: 1,
                       direction: Axis.horizontal,
                       allowHalfRating: true,
@@ -92,9 +108,9 @@ class _ParkingAreaState extends State<ParkingArea> {
                       itemSize: 20,
                       onRatingUpdate: (rating) {},
                     ),
-                    const Text(
-                      "4.0",
-                      style: TextStyle(
+                    Text(
+                      args.parkingarea['rating'].toString(),
+                      style: const TextStyle(
                           fontWeight: FontWeight.bold, color: secondaryColor),
                     )
                   ],
@@ -131,7 +147,10 @@ class _ParkingAreaState extends State<ParkingArea> {
                           foregroundColor: Colors.white),
                       label: const Text("Share")),
                   OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: () async {
+                        await ParkingRepository()
+                            .saveAsFavorite(args.parkingarea['id'], context);
+                      },
                       style: OutlinedButton.styleFrom(
                           foregroundColor: secondaryColor),
                       icon: const Icon(Icons.favorite),
@@ -145,8 +164,8 @@ class _ParkingAreaState extends State<ParkingArea> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
               ),
-              const Text(
-                "Convenient parking in the heart of downtown, close to major attractions and shopping centers.",
+              Text(
+                args.parkingarea['location_description'],
                 textAlign: TextAlign.justify,
               ),
               const Padding(
@@ -163,16 +182,16 @@ class _ParkingAreaState extends State<ParkingArea> {
                 scrollDirection: Axis.vertical,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: 2,
+                itemCount: args.parkingarea['amenities'].length,
                 itemBuilder: (BuildContext context, int index) {
-                  return const Padding(
-                    padding: EdgeInsets.only(right: 30.0),
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 30.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "CCTV",
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                          args.parkingarea['amenities'][index],
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         )
                       ],
                     ),
@@ -187,10 +206,8 @@ class _ParkingAreaState extends State<ParkingArea> {
         padding: const EdgeInsets.all(30.0),
         child: ElevatedButton(
             onPressed: () {
-              Navigator.pushNamed(
-                context,
-                "/details",
-              );
+              Navigator.pushNamed(context, ParkingDetails.routeName,
+                  arguments: ParkingArguments(parkingarea: args.parkingarea));
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: secondaryColor,

@@ -1,4 +1,8 @@
+import 'package:empty_widget/empty_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_carparking_app/arguments.dart';
+import 'package:supabase_carparking_app/repository/parking_repository.dart';
+import 'package:supabase_carparking_app/screens/parking_area.dart';
 import '../constants/config.dart';
 import '../constants/constant.dart';
 import '../widgets.dart';
@@ -12,6 +16,8 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   final TextEditingController searchController = TextEditingController();
+  bool search = false;
+  List<Map<String, dynamic>> searchList = [];
 
   @override
   void dispose() {
@@ -47,7 +53,17 @@ class _HomeState extends State<Home> {
                 width: MediaQuery.of(context).size.width * 0.9,
                 child: TextField(
                   controller: searchController,
-                  onChanged: (value) {},
+                  onChanged: (value) async {
+                    if (value.isEmpty) {
+                      search = false;
+                    } else {
+                      search = true;
+                      searchList = await ParkingRepository()
+                          .searchParkingArea(context, value);
+                    }
+
+                    setState(() {});
+                  },
                   decoration: InputDecoration(
                       hintText: "Search parking area",
                       hintStyle: const TextStyle(fontSize: 13),
@@ -67,7 +83,11 @@ class _HomeState extends State<Home> {
                         size: 20,
                       ),
                       suffixIcon: IconButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            searchController.clear();
+                            search = false;
+                            setState(() {});
+                          },
                           icon: const Icon(
                             Icons.clear,
                             color: secondaryColor,
@@ -76,35 +96,115 @@ class _HomeState extends State<Home> {
                 ),
               ),
             ),
-            Container(
-                height: MediaQuery.of(context).size.height * 0.68,
-                padding: const EdgeInsets.all(10.0),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: 5,
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      title: const Text(
-                        "Downtown Plaza",
-                        style: TextStyle(
-                            color: secondaryColor,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: const Text(
-                        "123 Main St, New York, NY 10001",
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      trailing: const Icon(
-                        Icons.keyboard_arrow_right,
-                        color: secondaryColor,
-                      ),
-                      onTap: () {
-                        Navigator.pushNamed(context, "/area");
-                      },
-                    );
-                  },
-                ))
+            (search)
+                ? Container(
+                    height: MediaQuery.of(context).size.height * 0.68,
+                    padding: const EdgeInsets.all(10.0),
+                    child: (searchList.isEmpty)
+                        ? SizedBox(
+                            width: 300,
+                            child: EmptyWidget(
+                              image: null,
+                              packageImage: PackageImage.Image_1,
+                              title: appName,
+                              subTitle: 'No search found',
+                              titleTextStyle: const TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.w500),
+                              subtitleTextStyle: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black,
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: searchList.length,
+                            itemBuilder: (context, index) {
+                              return ListTile(
+                                title: Text(
+                                  searchList[index]['name'],
+                                  style: const TextStyle(
+                                      color: secondaryColor,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Text(
+                                  searchList[index]['location_text'],
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                trailing: const Icon(
+                                  Icons.keyboard_arrow_right,
+                                  color: secondaryColor,
+                                ),
+                                onTap: () {
+                                  Navigator.pushNamed(
+                                      context, ParkingArea.routeName,
+                                      arguments: ParkingArguments(
+                                          parkingarea: searchList[index]));
+                                },
+                              );
+                            },
+                          ))
+                : Container(
+                    height: MediaQuery.of(context).size.height * 0.68,
+                    padding: const EdgeInsets.all(10.0),
+                    child: FutureBuilder(
+                        future: ParkingRepository().getParkingareas(context),
+                        builder: (context, snapshot) {
+                          List<Map<String, dynamic>> parkingareas =
+                              snapshot.data ?? [];
+
+                          return (parkingareas.isEmpty)
+                              ? SizedBox(
+                                  width: 300,
+                                  child: EmptyWidget(
+                                    image: null,
+                                    packageImage: PackageImage.Image_1,
+                                    title: appName,
+                                    subTitle: 'No parking area available yet',
+                                    titleTextStyle: const TextStyle(
+                                        fontSize: 18,
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w500),
+                                    subtitleTextStyle: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  shrinkWrap: true,
+                                  itemCount: parkingareas.length,
+                                  itemBuilder: (context, index) {
+                                    return ListTile(
+                                      title: Text(
+                                        parkingareas[index]['name'],
+                                        style: const TextStyle(
+                                            color: secondaryColor,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      subtitle: Text(
+                                        parkingareas[index]['location_text'],
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                      trailing: const Icon(
+                                        Icons.keyboard_arrow_right,
+                                        color: secondaryColor,
+                                      ),
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                            context, ParkingArea.routeName,
+                                            arguments: ParkingArguments(
+                                                parkingarea:
+                                                    parkingareas[index]));
+                                      },
+                                    );
+                                  },
+                                );
+                        }))
           ],
         ),
         bottomNavigationBar: const CustomBottomNavigationBar(

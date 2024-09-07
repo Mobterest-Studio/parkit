@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:supabase_carparking_app/constants/config.dart';
+import 'package:supabase_carparking_app/repository/parking_repository.dart';
+import '../arguments.dart';
 import '../constants/constant.dart';
 
 class ParkingTicket extends StatefulWidget {
@@ -8,11 +11,22 @@ class ParkingTicket extends StatefulWidget {
 
   @override
   State<ParkingTicket> createState() => _ParkingTicketState();
+
+  static const routeName = "/ticket";
 }
 
 class _ParkingTicketState extends State<ParkingTicket> {
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)!.settings.arguments as ParkingArguments;
+    String formattedEntryTime = DateFormat('hh:mm a')
+        .format(DateFormat('HH:mm').parse(args.parkingarea['entry_time']));
+    String formattedExitTime = DateFormat('hh:mm a')
+        .format(DateFormat('HH:mm').parse(args.parkingarea['exit_time']));
+
+    double totalFee = args.parkingarea['parkingarea']['parking_fee'] *
+        args.parkingarea['duration'];
+
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -55,71 +69,91 @@ class _ParkingTicketState extends State<ParkingTicket> {
                 indent: 20,
                 endIndent: 20,
               ),
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              FutureBuilder(
+                future: ParkingRepository().getSpecificVehicle(
+                    context, args.parkingarea['vehicle_id']),
+                builder: (context, snapshot) {
+                  List<Map<String, dynamic>> response = snapshot.data ?? [];
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        "Name",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 13),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Name",
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          Text(
+                            response.isEmpty ? "" : response[0]['car_model'],
+                            style: const TextStyle(
+                                fontSize: 15, color: secondaryColor),
+                          )
+                        ],
                       ),
-                      Text(
-                        "Lexus",
-                        style: TextStyle(fontSize: 15, color: secondaryColor),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Vehicle No.",
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          Text(
+                            response.isEmpty ? "" : response[0]['car_number'],
+                            style: const TextStyle(
+                                fontSize: 15, color: secondaryColor),
+                          )
+                        ],
                       )
                     ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Vehicle No.",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                      Text(
-                        "4XP98E0C",
-                        style: TextStyle(fontSize: 15, color: secondaryColor),
-                      )
-                    ],
-                  )
-                ],
+                  );
+                },
               ),
-              const Padding(
-                padding: EdgeInsets.only(top: 15.0),
+              Padding(
+                padding: const EdgeInsets.only(top: 15.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           "Parking Area",
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 13),
                         ),
                         Text(
-                          "Downtown Plaza",
-                          style: TextStyle(fontSize: 15, color: secondaryColor),
+                          args.parkingarea['parkingarea']['name'],
+                          style: const TextStyle(
+                              fontSize: 15, color: secondaryColor),
                         )
                       ],
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Parking Slot",
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                        Text(
-                          "G1",
-                          style: TextStyle(fontSize: 15, color: secondaryColor),
-                        )
-                      ],
+                    FutureBuilder(
+                      future: ParkingRepository().getSpecificSlot(
+                          context, args.parkingarea['parking_slot_id']),
+                      builder: (context, snapshot) {
+                        List<Map<String, dynamic>> response =
+                            snapshot.data ?? [];
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Parking Slot",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            Text(
+                              response.isEmpty ? "" : response[0]['name'],
+                              style: const TextStyle(
+                                  fontSize: 15, color: secondaryColor),
+                            )
+                          ],
+                        );
+                      },
                     )
                   ],
                 ),
@@ -127,63 +161,66 @@ class _ParkingTicketState extends State<ParkingTicket> {
               Container(
                 alignment: Alignment.topLeft,
                 margin: const EdgeInsets.only(top: 15.0),
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Time",
+                    const Text("Time",
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 13)),
                     Text(
-                      "3:00PM - 4:00pm",
-                      style: TextStyle(fontSize: 15, color: secondaryColor),
+                      "$formattedEntryTime - $formattedExitTime",
+                      style:
+                          const TextStyle(fontSize: 15, color: secondaryColor),
                     )
                   ],
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.only(top: 15.0),
+              Padding(
+                padding: const EdgeInsets.only(top: 15.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Duration",
+                        const Text("Duration",
                             style: TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 13)),
                         Text(
-                          "3 Hours",
-                          style: TextStyle(fontSize: 15, color: secondaryColor),
+                          "${args.parkingarea['duration']} Hours",
+                          style: const TextStyle(
+                              fontSize: 15, color: secondaryColor),
                         )
                       ],
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Date",
+                        const Text("Date",
                             style: TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 13)),
                         Text(
-                          "12 Aug 2024",
-                          style: TextStyle(fontSize: 15, color: secondaryColor),
+                          args.parkingarea['parking_date'],
+                          style: const TextStyle(
+                              fontSize: 15, color: secondaryColor),
                         )
                       ],
                     )
                   ],
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.only(top: 8.0),
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
                 child: Column(
                   children: [
-                    Text(
+                    const Text(
                       "Total Parking Fee",
                       style: TextStyle(
                           fontWeight: FontWeight.bold, color: secondaryColor),
                     ),
                     Text(
-                      "\$200",
-                      style: TextStyle(
+                      "\$$totalFee",
+                      style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),

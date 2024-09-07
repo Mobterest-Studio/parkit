@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'package:supabase_carparking_app/screens/parking_ticket.dart';
 import 'dart:async';
 
+import '../arguments.dart';
 import '../constants/config.dart';
 import '../constants/constant.dart';
 
@@ -10,6 +12,8 @@ class ParkingTimer extends StatefulWidget {
 
   @override
   State<ParkingTimer> createState() => _ParkingTimerState();
+
+  static const routeName = "/timer";
 }
 
 class _ParkingTimerState extends State<ParkingTimer> {
@@ -50,6 +54,8 @@ class _ParkingTimerState extends State<ParkingTimer> {
 
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)!.settings.arguments as ParkingArguments;
+
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -115,7 +121,9 @@ class _ParkingTimerState extends State<ParkingTimer> {
                 ),
                 TextButton.icon(
                     onPressed: () {
-                      Navigator.pushNamed(context, '/parkingticket');
+                      Navigator.pushNamed(context, ParkingTicket.routeName,
+                          arguments:
+                              ParkingArguments(parkingarea: args.parkingarea));
                     },
                     icon: const Icon(Icons.arrow_right),
                     iconAlignment: IconAlignment.end,

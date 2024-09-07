@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sign_in_button/sign_in_button.dart';
 import 'package:supabase_carparking_app/constants/config.dart';
-import 'package:supabase_carparking_app/constants/constant.dart'; 
+import 'package:supabase_carparking_app/constants/constant.dart';
+import 'package:supabase_carparking_app/repository/parking_repository.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -98,8 +99,11 @@ class _LoginState extends State<Login> {
                       Padding(
                         padding: const EdgeInsets.only(top: 10.0),
                         child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, "/home");
+                          onPressed: () async {
+                            if (_loginFormKey.currentState!.validate()) {
+                              await ParkingRepository()
+                                  .signInUser(emailController.text, context);
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: brandColor,

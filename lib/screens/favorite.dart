@@ -1,5 +1,10 @@
+import 'package:empty_widget/empty_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_carparking_app/arguments.dart';
+import 'package:supabase_carparking_app/repository/parking_repository.dart';
+import 'package:supabase_carparking_app/screens/parking_area.dart';
 import '../constants/config.dart';
+import '../constants/constant.dart';
 
 class Favorite extends StatefulWidget {
   const Favorite({super.key});
@@ -10,7 +15,7 @@ class Favorite extends StatefulWidget {
 
 class _FavoriteState extends State<Favorite> {
   final TextEditingController searchController = TextEditingController();
-
+  bool search = false;
   List<Map<String, dynamic>> searchList = [];
 
   @override
@@ -37,7 +42,17 @@ class _FavoriteState extends State<Favorite> {
               width: MediaQuery.of(context).size.width * 0.9,
               child: TextField(
                 controller: searchController,
-                onChanged: (value) {},
+                onChanged: (value) async {
+                  if (value.isEmpty) {
+                    search = false;
+                  } else {
+                    search = true;
+                    searchList = await ParkingRepository()
+                            .searchFavourite(context, value) ??
+                        [];
+                  }
+                  setState(() {});
+                },
                 decoration: InputDecoration(
                     hintText: "Search parking area",
                     hintStyle: const TextStyle(fontSize: 13),
@@ -58,38 +73,130 @@ class _FavoriteState extends State<Favorite> {
               ),
             ),
           ),
-          Container(
-              height: MediaQuery.of(context).size.height * 0.68,
-              padding: const EdgeInsets.all(10.0),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: 1,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: const Text(
-                      "Downtown Plaza",
-                      style: TextStyle(
-                          color: secondaryColor,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: const Text(
-                      "123 Main St, New York, NY 10001",
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(
-                        Icons.remove_circle,
-                        color: redColor,
-                      ),
-                      onPressed: () {},
-                    ),
-                    onTap: () {
-                      Navigator.pushNamed(context, "/area");
+          (search)
+              ? Container(
+                  height: MediaQuery.of(context).size.height * 0.68,
+                  padding: const EdgeInsets.all(10.0),
+                  child: (searchList.isEmpty)
+                      ? SizedBox(
+                          width: 300,
+                          child: EmptyWidget(
+                            image: null,
+                            packageImage: PackageImage.Image_1,
+                            title: appName,
+                            subTitle: 'No favourites available yet',
+                            titleTextStyle: const TextStyle(
+                                fontSize: 18,
+                                color: Colors.black,
+                                fontWeight: FontWeight.w500),
+                            subtitleTextStyle: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: searchList.length,
+                          itemBuilder: (context, index) {
+                            return ListTile(
+                              title: Text(
+                                searchList[index]['name'],
+                                style: const TextStyle(
+                                    color: secondaryColor,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Text(
+                                searchList[index]['location_text'],
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(
+                                  Icons.remove_circle,
+                                  color: redColor,
+                                ),
+                                onPressed: () {
+                                  ParkingRepository().removeFavourite(
+                                      context, searchList[index]['id']);
+                                  setState(() {});
+                                },
+                              ),
+                              onTap: () {
+                                Navigator.pushNamed(
+                                    context, ParkingArea.routeName,
+                                    arguments: ParkingArguments(
+                                        parkingarea: searchList[index]
+                                            ['parkingarea']));
+                              },
+                            );
+                          },
+                        ))
+              : Container(
+                  height: MediaQuery.of(context).size.height * 0.68,
+                  padding: const EdgeInsets.all(10.0),
+                  child: FutureBuilder(
+                    future: ParkingRepository().getMyFavorites(context),
+                    builder: (context, snapshot) {
+                      List<Map<String, dynamic>> response = snapshot.data ?? [];
+
+                      return (response.isEmpty)
+                          ? SizedBox(
+                              width: 300,
+                              child: EmptyWidget(
+                                image: null,
+                                packageImage: PackageImage.Image_1,
+                                title: appName,
+                                subTitle: 'No favourites available yet',
+                                titleTextStyle: const TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w500),
+                                subtitleTextStyle: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: response.length,
+                              itemBuilder: (context, index) {
+                                return ListTile(
+                                  title: Text(
+                                    response[index]['name'],
+                                    style: const TextStyle(
+                                        color: secondaryColor,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text(
+                                    response[index]['location_text'],
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  trailing: IconButton(
+                                    icon: const Icon(
+                                      Icons.remove_circle,
+                                      color: redColor,
+                                    ),
+                                    onPressed: () {
+                                      ParkingRepository().removeFavourite(
+                                          context, response[index]['id']);
+                                      setState(() {});
+                                    },
+                                  ),
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                        context, ParkingArea.routeName,
+                                        arguments: ParkingArguments(
+                                            parkingarea: response[index]
+                                                ['parkingarea']));
+                                  },
+                                );
+                              },
+                            );
                     },
-                  );
-                },
-              ))
+                  ))
         ],
       ),
     );

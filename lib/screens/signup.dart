@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:sign_in_button/sign_in_button.dart';
 import 'package:supabase_carparking_app/constants/constant.dart';
+import 'package:supabase_carparking_app/repository/parking_repository.dart';
 
-import '../constants/config.dart'; 
+import '../constants/config.dart';
 
 class Signup extends StatefulWidget {
   const Signup({super.key});
@@ -97,7 +98,10 @@ class _LoginState extends State<Signup> {
                               padding: const EdgeInsets.only(top: 10.0),
                               child: ElevatedButton(
                                 onPressed: () async {
-                                 Navigator.pushNamed(context, "/emailVerification");
+                                  if (_signupFormKey.currentState!.validate()) {
+                                    await ParkingRepository().createAccount(
+                                        emailController.text, context);
+                                  }
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: brandColor,

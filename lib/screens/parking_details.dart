@@ -2,19 +2,26 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_carparking_app/constants/config.dart'; 
-import '../constants/constant.dart'; 
+import 'package:supabase_carparking_app/constants/config.dart';
+import 'package:supabase_carparking_app/main.dart';
+import 'package:supabase_carparking_app/models/parking_model.dart';
+import 'package:supabase_carparking_app/repository/parking_repository.dart';
+import 'package:supabase_carparking_app/screens/parking_lot.dart';
+import '../arguments.dart';
+import '../constants/constant.dart';
 
 class ParkingDetails extends StatefulWidget {
   const ParkingDetails({super.key});
 
   @override
   State<ParkingDetails> createState() => _ParkingDetailsState();
+
+  static const routeName = "/details";
 }
 
 class _ParkingDetailsState extends State<ParkingDetails> {
   double totalFee = 0;
-  String? dropdownValue;
+  Map<String, dynamic>? dropdownValue;
   final TextEditingController durationController = TextEditingController();
   DateTime now = DateTime.now();
   String formattedDate = '01-01-2024';
@@ -46,6 +53,7 @@ class _ParkingDetailsState extends State<ParkingDetails> {
 
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)!.settings.arguments as ParkingArguments;
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -102,7 +110,8 @@ class _ParkingDetailsState extends State<ParkingDetails> {
                             DateTime newTime =
                                 time.add(Duration(hours: int.parse(value)));
                             exitTime = DateFormat('hh:mm a').format(newTime);
-                            totalFee = 20;
+                            totalFee = double.parse(durationController.text) *
+                                args.parkingarea['parking_fee'];
                           } else {
                             totalFee = 0;
                             exitTime = 'hh:MM a';
@@ -122,33 +131,46 @@ class _ParkingDetailsState extends State<ParkingDetails> {
                 ],
               ),
             ),
-            Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
-                  child: Text(
-                    "Choose your vehicle",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                DropdownButton(
-                  value: dropdownValue,
-                  icon: const Icon(Icons.keyboard_arrow_down),
-                  style: const TextStyle(color: secondaryColor),
-                  items: ["4RTE0545, 4XP09323"]
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (String? value) {
-                    setState(() {
-                      dropdownValue = value!;
-                    });
-                  },
-                ),
-              ],
+            FutureBuilder(
+              future: ParkingRepository().getMyVehicles(context),
+              builder: (context, snapshot) {
+                List<Map<String, dynamic>> response = snapshot.data ?? [];
+
+                if (response.isEmpty) {
+                  return const SizedBox.shrink();
+                } else {
+                  dropdownValue = response.first;
+                  return Column(
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
+                        child: Text(
+                          "Choose your vehicle",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      DropdownButton(
+                        value: dropdownValue,
+                        icon: const Icon(Icons.keyboard_arrow_down),
+                        style: const TextStyle(color: secondaryColor),
+                        items: response
+                            .map<DropdownMenuItem<Map<String, dynamic>>>(
+                                (Map<String, dynamic> value) {
+                          return DropdownMenuItem<Map<String, dynamic>>(
+                            value: value,
+                            child: Text(value['car_number']),
+                          );
+                        }).toList(),
+                        onChanged: (Map<String, dynamic>? value) {
+                          setState(() {
+                            dropdownValue = value!;
+                          });
+                        },
+                      ),
+                    ],
+                  );
+                }
+              },
             ),
             TextButton.icon(
                 onPressed: () {
@@ -195,9 +217,24 @@ class _ParkingDetailsState extends State<ParkingDetails> {
               child: Align(
                 alignment: Alignment.center,
                 child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, "/lot");
-                    },
+                    onPressed: (durationController.text.isEmpty ||
+                            dropdownValue == null)
+                        ? null
+                        : () {
+                            supabaseProvider.setParking(Parking(
+                                parkingDate: formattedDate,
+                                entryTime: entryTime,
+                                durationInHours:
+                                    int.parse(durationController.text),
+                                exitTime: exitTime,
+                                parkingArea: args.parkingarea,
+                                userId: supabaseProvider.userId,
+                                vehicleId: dropdownValue!['id'],
+                                parkingSlotId: null));
+                            Navigator.pushNamed(context, ParkingLot.routeName,
+                                arguments: ParkingArguments(
+                                    parkingarea: args.parkingarea));
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: secondaryColor,
                       foregroundColor: Colors.white,
