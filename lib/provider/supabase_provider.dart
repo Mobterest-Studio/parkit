@@ -4,6 +4,9 @@ import 'package:supabase_carparking_app/models/parking_model.dart'; // Importing
 /// SupabaseProvider class extends ChangeNotifier to handle state management in Flutter.
 /// It is responsible for notifying listeners when changes occur in the state.
 class SupabaseProvider extends ChangeNotifier {
+  late int _profileId;
+  int get profileId => _profileId;
+
   // Private variable to store user ID.
   late int _userId;
 
@@ -44,5 +47,10 @@ class SupabaseProvider extends ChangeNotifier {
   void setParking(Parking parkingDetails) {
     _parking = parkingDetails;
     notifyListeners(); // Notify all listeners that parking details have changed.
+  }
+
+  void setProfileId(int prfl) {
+    _profileId = prfl;
+    notifyListeners();
   }
 }

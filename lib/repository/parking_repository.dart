@@ -1,8 +1,16 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_carparking_app/constants/config.dart';
 import 'package:supabase_carparking_app/main.dart';
 import 'package:supabase_carparking_app/repository/adapter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+import 'package:path/path.dart' as p;
+
+import '../screens/email_verification.dart';
 
 class ParkingRepository extends Adapter {
   @override
@@ -10,7 +18,7 @@ class ParkingRepository extends Adapter {
       BuildContext context) async {
     try {
       final data = await supabase.from('vehicle').insert({
-        'user_id': supabaseProvider.userId,
+        'user_id': supabaseProvider.profileId,
         'car_model': carModel,
         'car_number': carNumber,
         'car_color': carColor
@@ -28,44 +36,55 @@ class ParkingRepository extends Adapter {
     } on PostgrestException catch (e) {
       if (context.mounted) {
         switch (e.code) {
-          case '23505':
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("This account already exists!")));
-            break;
           case '42501':
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content:
                     Text("Unauthorized: You don't have permission to access")));
+
             break;
           default:
             ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text("Unknown Error: ${e.message}")));
         }
       }
+    } on AuthException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("An unexpected error occured: $e")));
+            SnackBar(content: Text("An unexpected error occurred: $e")));
       }
     }
   }
 
   @override
-  Future createAccount(String email, BuildContext context) async {
+  Future createAccount(
+      String email, String password, BuildContext context) async {
     try {
-      final data = await supabase
-          .from('profile')
-          .insert({'email_address': email}).select();
+      final AuthResponse res = await supabase.auth.signUp(
+        email: email,
+        password: password,
+      );
 
-      if (data.isNotEmpty) {
-        supabaseProvider.setUserId(data[0]['id']);
-        if (context.mounted) {
-          Navigator.pushNamed(context, "/emailVerification");
-        }
-      } else {
-        if (context.mounted) {
+      final User? user = res.user;
+
+      if (context.mounted) {
+        if (user == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Failed to create account")));
+              const SnackBar(content: Text("Failed to create an account")));
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EmailVerification(
+                emailAddress: email,
+              ),
+            ),
+          );
+          //Navigator.pushNamed(context, "/emailVerification");
         }
       }
     } on PostgrestException catch (e) {
@@ -74,21 +93,28 @@ class ParkingRepository extends Adapter {
           case '23505':
             ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("This account already exists!")));
+
             break;
           case '42501':
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content:
                     Text("Unauthorized: You don't have permission to access")));
+
             break;
           default:
             ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text("Unknown Error: ${e.message}")));
         }
       }
+    } on AuthException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("An unexpected error occured: $e")));
+            SnackBar(content: Text("An unexpected error occurred: $e")));
       }
     }
   }
@@ -130,36 +156,34 @@ class ParkingRepository extends Adapter {
   @override
   Future getAvailableSlots(BuildContext context, int parkingAreaId) async {
     try {
-      final data = await supabase
-          .schema('parking')
-          .from('parkingslot')
-          .select('id,  parkinglot!inner(*)')
-          .eq('parkinglot.parking_area_id', parkingAreaId)
-          .eq('availability', true)
-          .count();
+      final res = await supabase.functions
+          .invoke('dynamic-worker', body: {'parking_area_id': parkingAreaId});
+      final data = res.data;
 
-      return data.count;
+      return data['count'];
     } on PostgrestException catch (e) {
       if (context.mounted) {
         switch (e.code) {
-          case '23505':
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("This account already exists!")));
-            break;
           case '42501':
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content:
                     Text("Unauthorized: You don't have permission to access")));
+
             break;
           default:
             ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text("Unknown Error: ${e.message}")));
         }
       }
+    } on AuthException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("An unexpected error occured: $e")));
+            SnackBar(content: Text("An unexpected error occurred: $e")));
       }
     }
   }
@@ -437,38 +461,6 @@ class ParkingRepository extends Adapter {
   }
 
   @override
-  Future getUserProfile(BuildContext context) async {
-    try {
-      return await supabase
-          .from('profile')
-          .select('*')
-          .eq('id', supabaseProvider.userId);
-    } on PostgrestException catch (e) {
-      if (context.mounted) {
-        switch (e.code) {
-          case '23505':
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("This account already exists!")));
-            break;
-          case '42501':
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content:
-                    Text("Unauthorized: You don't have permission to access")));
-            break;
-          default:
-            ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Unknown Error: ${e.message}")));
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("An unexpected error occured: $e")));
-      }
-    }
-  }
-
-  @override
   Future removeFavourite(BuildContext context, int id) async {
     try {
       await supabase.from('favourite').delete().eq('favourite_id', id);
@@ -684,45 +676,91 @@ class ParkingRepository extends Adapter {
   }
 
   @override
-  Future signInUser(String email, BuildContext context) async {
+  Future signInUser(String email, String password, BuildContext context) async {
     try {
-      final data =
-          await supabase.from('profile').select('*').eq('email_address', email);
+      final AuthResponse res = await supabase.auth
+          .signInWithPassword(email: email, password: password);
 
-      if (context.mounted) {
-        if (data.isEmpty) {
+      final User? user = res.user;
+
+      if (user == null) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
               content: Text("You don't have an account. Proceed to sign up!")));
-        } else if (data.length == 1) {
-          supabaseProvider.setUserId(data[0]['id']);
+        }
+      } else {
+        if (context.mounted) {
+          List<Map<String, dynamic>> profile =
+              await retrieveUserProfile(context);
+          supabaseProvider.setProfileId(profile[0]['id']);
           supabaseProvider.setSignedStatus(true);
+        }
+        if (context.mounted) {
           Navigator.pushNamed(context, "/home");
-        } else {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(const SnackBar(content: Text("Failed to log in!")));
         }
       }
     } on PostgrestException catch (e) {
       if (context.mounted) {
         switch (e.code) {
-          case '23505':
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("This account already exists!")));
-            break;
           case '42501':
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content:
                     Text("Unauthorized: You don't have permission to access")));
+
             break;
           default:
             ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text("Unknown Error: ${e.message}")));
         }
       }
+    } on AuthException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("An unexpected error occured: $e")));
+            SnackBar(content: Text("An unexpected error occurred: $e")));
+      }
+    }
+  }
+
+  @override
+  Future retrieveUserProfile(BuildContext context) async {
+    try {
+      return await supabase
+          .from('profile')
+          .select("*")
+          .eq("user_id", supabase.auth.currentUser!.id);
+    } on PostgrestException catch (e) {
+      if (context.mounted) {
+        switch (e.code) {
+          case '23505':
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("This account already exists!")));
+
+            break;
+          case '42501':
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content:
+                    Text("Unauthorized: You don't have permission to access")));
+
+            break;
+          default:
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Unknown Error: ${e.message}")));
+        }
+      }
+    } on AuthException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("An unexpected error occurred: $e")));
       }
     }
   }
@@ -741,13 +779,152 @@ class ParkingRepository extends Adapter {
     try {
       final data = await supabase
           .from('profile')
-          .update({'name': name, 'phone_number': phoneNumber})
-          .eq('id', supabaseProvider.userId)
+          .update({
+            'name': name,
+            'phone_number': phoneNumber,
+            'email_address': supabase.auth.currentUser!.email
+          })
+          .eq('user_id', supabase.auth.currentUser!.id)
           .select();
 
-      if (data.isNotEmpty) {
-        if (context.mounted) {
+      if (context.mounted) {
+        if (data.isNotEmpty) {
+          supabaseProvider.setProfileId(data[0]['id']);
+
           addCarProfile(carModel, carNumber, carColor, context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text("Failed to update profile. Try again later!")));
+        }
+      }
+    } on PostgrestException catch (e) {
+      if (context.mounted) {
+        switch (e.code) {
+          case '42501':
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content:
+                    Text("Unauthorized: You don't have permission to access")));
+
+            break;
+          default:
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Unknown Error: ${e.message}")));
+        }
+      }
+    } on AuthException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("An unexpected error occurred: $e")));
+      }
+    }
+  }
+
+  @override
+  Future<void> signOut(BuildContext context) async {
+    try {
+      await supabase.auth.signOut();
+      supabaseProvider.setUserId(0);
+
+      if (context.mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, "/", (route) => false);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sign out failed: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Future signInWithFacebook(BuildContext context) async {
+    await supabase.auth.signInWithOAuth(
+      OAuthProvider.facebook,
+      redirectTo: kIsWeb
+          ? null
+          : 'my.scheme://my-host', // Optionally set the redirect link to bring back the user via deeplink.
+      authScreenLaunchMode: kIsWeb
+          ? LaunchMode.platformDefault
+          : LaunchMode
+              .externalApplication, // Launch the auth screen in a new webview on mobile.
+    );
+  }
+
+  @override
+  Future signInWithGoogle(BuildContext context) async {
+    // accessToken - The OAuth2 access token to access Google services.
+    // idToken - An OpenID Connect ID token that identifies the user.
+    await supabase.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: '', //idToken
+      accessToken: '', //accessToken
+    );
+  }
+
+  @override
+  Future resendOTP(BuildContext context) async {
+    try {
+      await supabase.auth.resend(
+        type: OtpType.signup,
+        email: supabase.auth.currentUser!.email,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                "A new OTP has been sent to your registered email address.")));
+      }
+    } on PostgrestException catch (e) {
+      if (context.mounted) {
+        switch (e.code) {
+          case '23505':
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("This account already exists!")));
+
+            break;
+          case '42501':
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content:
+                    Text("Unauthorized: You don't have permission to access")));
+
+            break;
+          default:
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Unknown Error: ${e.message}")));
+        }
+      }
+    } on AuthException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("An unexpected error occurred: $e")));
+      }
+    }
+  }
+
+  @override
+  Future verifyOTP(String email, String otp, BuildContext context) async {
+    try {
+      final AuthResponse res = await supabase.auth
+          .verifyOTP(email: email, token: otp, type: OtpType.signup);
+
+      final User? user = res.user;
+
+      if (context.mounted) {
+        if (user != null) {
+          Navigator.pushNamed(context, "/profilesignup");
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Verification failed. Try again.")));
         }
       }
     } on PostgrestException catch (e) {
@@ -756,22 +933,165 @@ class ParkingRepository extends Adapter {
           case '23505':
             ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("This account already exists!")));
+
             break;
           case '42501':
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content:
                     Text("Unauthorized: You don't have permission to access")));
+
+            break;
+          default:
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Unknown Error: ${e.message}")));
+            break;
+        }
+      }
+    } on AuthException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("An unexpected error occurred: $e")));
+      }
+    }
+  }
+
+  @override
+  Future getUserProfile(BuildContext context) async {
+    try {
+      return await supabase
+          .from('profile')
+          .select('*')
+          .eq('id', supabaseProvider.profileId);
+    } on PostgrestException catch (e) {
+      if (context.mounted) {
+        switch (e.code) {
+          case '42501':
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content:
+                    Text("Unauthorized: You don't have permission to access")));
+
             break;
           default:
             ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text("Unknown Error: ${e.message}")));
         }
       }
+    } on AuthException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("An unexpected error occured: $e")));
+            SnackBar(content: Text("An unexpected error occurred: $e")));
       }
+    }
+  }
+
+  @override
+  Future uploadProfile(BuildContext context) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+      if (pickedFile == null) return null;
+
+      File image = File(pickedFile.path);
+
+      String fileExtension = p.extension(image.path);
+      if (fileExtension.isEmpty) {
+        fileExtension = ".jpg";
+      }
+
+      String fileName = '${const Uuid().v4()}$fileExtension';
+
+      String storagePath = 'profile_images/$fileName';
+
+      await supabase.storage.from('profiles').upload(storagePath, image);
+
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('User not logged in')));
+        }
+      }
+
+      await supabase.from('profile').update({'profile_image': storagePath}).eq(
+          'user_id', supabase.auth.currentUser!.id);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error uploading profile image: $e')));
+      }
+    }
+  }
+
+  @override
+  Future downloadProfile(BuildContext context) async {
+    try {
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('User not logged in')));
+      }
+
+      final response = await supabase
+          .from('profile')
+          .select('profile_image')
+          .eq('user_id', userId)
+          .single();
+
+      if (response['profile_image'] == null) {
+        return null;
+      }
+
+      String storagePath = response['profile_image'];
+
+      final signedUrlResponse = await supabase.storage
+          .from('profiles')
+          .createSignedUrl(storagePath, 3600);
+
+      return signedUrlResponse;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  @override
+  Future deleteProfile(BuildContext context, String imagePath) async {
+    try {
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Logged out successfully')));
+      }
+
+      // Delete file from Supabase Storage
+      await supabase.storage.from('profiles').remove([imagePath]);
+
+      //Remove the image reference from the database
+      await supabase
+          .from('profile')
+          .update({'profile_image': null}).eq('user_id', userId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Profile image deleted successfully.")));
+      }
+      return true;
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error deleting profile image: $e")));
+      }
+
+      return false;
     }
   }
 }

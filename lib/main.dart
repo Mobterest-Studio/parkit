@@ -13,6 +13,7 @@ import 'package:supabase_carparking_app/screens/profile.dart';
 import 'package:supabase_carparking_app/screens/profile_signup.dart';
 import 'package:supabase_carparking_app/screens/signup.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'screens/flutter_auth_ui.dart';
 import 'screens/home.dart';
 import 'screens/login.dart';
 import 'screens/parking_area.dart';
@@ -59,7 +60,7 @@ class MainApp extends StatelessWidget {
       routes: {
         "/": (context) => const Login(),
         "/signup": (context) => const Signup(),
-        "/emailVerification": (context) => const EmailVerification(),
+        // "/emailVerification": (context) => const EmailVerification(),
         "/profilesignup": (context) => const ProfileSignUp(),
         ParkingArea.routeName: (context) => const ParkingArea(),
         "/home": (context) => const Home(),
@@ -70,7 +71,8 @@ class MainApp extends StatelessWidget {
         ParkingTimer.routeName: (context) => const ParkingTimer(),
         ParkingTicket.routeName: (context) => const ParkingTicket(),
         "/favorite": (context) => const Favorite(),
-        "/notification": (context) => const Notifications()
+        "/notification": (context) => const Notifications(),
+        "/flutterauthui": (context) => const FlutterAuthUI()
       },
       debugShowCheckedModeBanner: false,
     );

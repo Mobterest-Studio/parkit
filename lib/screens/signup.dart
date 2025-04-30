@@ -100,7 +100,9 @@ class _LoginState extends State<Signup> {
                                 onPressed: () async {
                                   if (_signupFormKey.currentState!.validate()) {
                                     await ParkingRepository().createAccount(
-                                        emailController.text, context);
+                                        emailController.text,
+                                        passController.text,
+                                        context);
                                   }
                                 },
                                 style: ElevatedButton.styleFrom(

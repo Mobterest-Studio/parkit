@@ -1,5 +1,6 @@
 import 'package:empty_widget/empty_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_carparking_app/main.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
 
 import '../constants/config.dart';
@@ -14,6 +15,8 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
+  bool showIndicator = false;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -27,67 +30,119 @@ class _ProfileState extends State<Profile> {
         ),
         body: Column(
           children: [
-            Column(
-              children: [
-                Stack(
+            FutureBuilder(
+              future: ParkingRepository().getUserProfile(context),
+              builder: (context, snapshot) {
+                List<Map<String, dynamic>> response = snapshot.data ?? [];
+                return Column(
                   children: [
-                    const CircleAvatar(
-                      backgroundColor: brandColor,
-                      radius: 40,
-                      child: Center(
-                        child: Icon(
-                          Icons.person,
-                          color: secondaryColor,
-                          size: 50,
-                        ),
+                    GestureDetector(
+                        onTap: () async {
+                          setState(() {
+                            showIndicator = true;
+                          });
+                          await ParkingRepository().uploadProfile(context);
+                          Future.delayed(const Duration(seconds: 2), () {
+                            if (mounted) {
+                              setState(() {
+                                showIndicator = false;
+                              });
+                            }
+                          });
+                        },
+                        child: FutureBuilder(
+                          future: ParkingRepository().downloadProfile(context),
+                          builder: (context, snapshot) {
+                            String? image = snapshot.data;
+
+                            return (image == null)
+                                ? const Stack(children: [
+                                    CircleAvatar(
+                                      backgroundColor: brandColor,
+                                      radius: 40,
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.person,
+                                          color: secondaryColor,
+                                          size: 50,
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                        bottom: 0,
+                                        right: -10,
+                                        left: 50,
+                                        child: Icon(
+                                          Icons.add_circle,
+                                          color: secondaryColor,
+                                        ))
+                                  ])
+                                : Stack(children: [
+                                    CircleAvatar(
+                                        radius: 50,
+                                        backgroundImage: NetworkImage(image)),
+                                    Positioned(
+                                        bottom: -10,
+                                        right: -10,
+                                        child: IconButton(
+                                          onPressed: () async {
+                                            setState(() {
+                                              showIndicator = true;
+                                            });
+                                            await ParkingRepository()
+                                                .deleteProfile(context, image);
+                                            Future.delayed(
+                                                const Duration(seconds: 2), () {
+                                              if (mounted) {
+                                                setState(() {
+                                                  showIndicator = false;
+                                                });
+                                              }
+                                            });
+                                          },
+                                          icon: const CircleAvatar(
+                                            backgroundColor: Colors.white,
+                                            child: Icon(
+                                              Icons.delete_forever,
+                                              color: redColor,
+                                            ),
+                                          ),
+                                        ))
+                                  ]);
+                          },
+                        )),
+                    Visibility(
+                        visible: showIndicator,
+                        child: const CircularProgressIndicator(
+                          color: brandColor,
+                          padding: EdgeInsets.only(top: 8.0),
+                          strokeWidth: 1.0,
+                        )),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 20.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            (response.isEmpty) ? "" : response[0]['name'] ?? "",
+                            style: const TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          const Icon(
+                            Icons.verified_user,
+                            color: secondaryColor,
+                          )
+                        ],
                       ),
                     ),
-                    Positioned(
-                        bottom: -10,
-                        right: -10,
-                        child: IconButton(
-                          onPressed: () {},
-                          icon: const Icon(
-                            Icons.add_circle_rounded,
-                            color: secondaryColor,
-                          ),
-                        ))
+                    Text(
+                        (response.isEmpty)
+                            ? ""
+                            : response[0]['email_address'] ?? "",
+                        style: const TextStyle(fontSize: 12)),
                   ],
-                ),
-                FutureBuilder(
-                  future: ParkingRepository().getUserProfile(context),
-                  builder: (context, snapshot) {
-                    List<Map<String, dynamic>> response = snapshot.data ?? [];
-
-                    return Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 20.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                (response.isEmpty) ? "" : response[0]['name'],
-                                style: const TextStyle(
-                                    fontSize: 13, fontWeight: FontWeight.bold),
-                              ),
-                              const Icon(
-                                Icons.verified_user,
-                                color: secondaryColor,
-                              )
-                            ],
-                          ),
-                        ),
-                        Text(
-                            (response.isEmpty)
-                                ? ""
-                                : response[0]['email_address'],
-                            style: const TextStyle(fontSize: 12)),
-                      ],
-                    );
-                  },
-                )
-              ],
+                );
+              },
             ),
             ListTile(
               leading: Image.asset(appIcon),
@@ -119,9 +174,10 @@ class _ProfileState extends State<Profile> {
                                         title: appName,
                                         subTitle: 'No vehicles added yet',
                                         titleTextStyle: const TextStyle(
-                                            fontSize: 18,
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w500),
+                                          fontSize: 18,
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                         subtitleTextStyle: const TextStyle(
                                           fontSize: 14,
                                           color: Colors.black,
@@ -183,8 +239,11 @@ class _ProfileState extends State<Profile> {
             Padding(
               padding: const EdgeInsets.only(top: 20.0),
               child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, "/");
+                  onPressed: () async {
+                    await supabase.auth.signOut();
+                    if (context.mounted) {
+                      Navigator.pushNamed(context, "/");
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                       backgroundColor: secondaryColor,

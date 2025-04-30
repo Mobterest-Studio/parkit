@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 abstract class Adapter {
   /// Sign up a new user
-  Future createAccount(String email, BuildContext context);
+  Future createAccount(String email, String password, BuildContext context);
 
   /// Update profile of an existing user
   Future updateUserProfile(String name, String phoneNumber, String carModel,
@@ -13,7 +13,7 @@ abstract class Adapter {
       String carModel, String carNumber, String carColor, BuildContext context);
 
   /// Sign in an existing user
-  Future signInUser(String email, BuildContext context);
+  Future signInUser(String email, String password, BuildContext context);
 
   /// Get list of available parking areas
   Future getParkingareas(BuildContext context);
@@ -61,7 +61,7 @@ abstract class Adapter {
       BuildContext context, int parkingFloorId, int parkingAreaId);
 
   /// Update availability of a specific parking slot
-  updateSlotAvailability(int parkingSlotId );
+  updateSlotAvailability(int parkingSlotId);
 
   /// Get total amount of parking fee paid by an existing user
   Future getTotalFee(BuildContext context);
@@ -77,4 +77,31 @@ abstract class Adapter {
 
   ///Search a specific parking area from the list of favourites
   Future searchFavourite(BuildContext context, String searchWord);
+
+  ///signout
+  Future signOut(BuildContext context);
+
+  ///Sign in with Google
+  Future signInWithGoogle(BuildContext context);
+
+  ///Sign in with Facebook
+  Future signInWithFacebook(BuildContext context);
+
+  ///Verify OTP sent to the registered email address
+  Future verifyOTP(String email, String otp, BuildContext context);
+
+  ///Resend OTP to the registered email address
+  Future resendOTP(BuildContext context);
+
+  ///Retrieve profile using Auth Id
+  Future retrieveUserProfile(BuildContext context);
+
+  /// Upload Profile image
+  Future uploadProfile(BuildContext context);
+
+  /// Download Profile image
+  Future downloadProfile(BuildContext context);
+
+  /// Delete Profile image
+  Future deleteProfile(BuildContext context, String imagePath);
 }

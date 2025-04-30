@@ -2,11 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:supabase_carparking_app/constants/config.dart';
+import 'package:supabase_carparking_app/repository/parking_repository.dart';
 
 import '../constants/constant.dart';
 
 class EmailVerification extends StatefulWidget {
-  const EmailVerification({super.key});
+  final String emailAddress;
+
+  const EmailVerification({super.key, required this.emailAddress});
 
   @override
   State<EmailVerification> createState() => _EmailVerificationState();
@@ -14,7 +17,7 @@ class EmailVerification extends StatefulWidget {
 
 class _EmailVerificationState extends State<EmailVerification> {
   StreamController<ErrorAnimationType>? errorController;
-  TextEditingController textEditingController = TextEditingController();
+  TextEditingController otpController = TextEditingController();
   String currentText = "";
 
   @override
@@ -26,7 +29,7 @@ class _EmailVerificationState extends State<EmailVerification> {
   @override
   void dispose() {
     errorController!.close();
-    textEditingController.dispose();
+    otpController.dispose();
     super.dispose();
   }
 
@@ -84,7 +87,7 @@ class _EmailVerificationState extends State<EmailVerification> {
                 animationDuration: const Duration(milliseconds: 300),
                 enableActiveFill: true,
                 errorAnimationController: errorController,
-                controller: textEditingController,
+                controller: otpController,
                 keyboardType: TextInputType.number,
                 boxShadows: const [
                   BoxShadow(
@@ -93,8 +96,9 @@ class _EmailVerificationState extends State<EmailVerification> {
                     blurRadius: 10,
                   )
                 ],
-                onCompleted: (v) {
-                  Navigator.pushNamed(context, '/profilesignup');
+                onCompleted: (v) async {
+                  await ParkingRepository().verifyOTP(
+                      widget.emailAddress, otpController.text, context);
                 },
                 onChanged: (value) {
                   setState(() {
@@ -110,7 +114,9 @@ class _EmailVerificationState extends State<EmailVerification> {
               children: [
                 const Text("Didn’t get any email?"),
                 TextButton(
-                    onPressed: () {},
+                    onPressed: () async {
+                      await ParkingRepository().resendOTP(context);
+                    },
                     child: const Text(
                       "Resend code",
                       style: TextStyle(

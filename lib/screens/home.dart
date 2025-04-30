@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_carparking_app/arguments.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
 import 'package:supabase_carparking_app/screens/parking_area.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/config.dart';
 import '../constants/constant.dart';
+import '../main.dart';
 import '../widgets.dart';
 
 class Home extends StatefulWidget {
@@ -18,10 +20,28 @@ class _HomeState extends State<Home> {
   final TextEditingController searchController = TextEditingController();
   bool search = false;
   List<Map<String, dynamic>> searchList = [];
+  late RealtimeChannel _channel;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _channel = supabase
+        .channel('parkingarea')
+        .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'parking',
+            table: 'parkingarea',
+            callback: (payload) {
+              setState(() {});
+            })
+        .subscribe();
+  }
 
   @override
   void dispose() {
     searchController.dispose();
+    _channel.unsubscribe();
     super.dispose();
   }
 

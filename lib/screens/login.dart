@@ -101,8 +101,10 @@ class _LoginState extends State<Login> {
                         child: ElevatedButton(
                           onPressed: () async {
                             if (_loginFormKey.currentState!.validate()) {
-                              await ParkingRepository()
-                                  .signInUser(emailController.text, context);
+                              await ParkingRepository().signInUser(
+                                  emailController.text,
+                                  passController.text,
+                                  context);
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -130,7 +132,9 @@ class _LoginState extends State<Login> {
                 text: "Sign in with Google",
                 elevation: 4.0,
                 shape: const StadiumBorder(),
-                onPressed: () {},
+                onPressed: () {
+                  ParkingRepository().signInWithGoogle(context);
+                },
               ),
             ),
             Container(
@@ -142,8 +146,18 @@ class _LoginState extends State<Login> {
                 elevation: 4.0,
                 text: "Sign in with Facebook",
                 shape: const StadiumBorder(),
-                onPressed: () {},
+                onPressed: () {
+                  ParkingRepository().signInWithFacebook(context);
+                },
               ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 10.0),
+              child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, "/flutterauthui");
+                  },
+                  child: const Text("Using Flutter Auth UI")),
             ),
             const Spacer(),
             Padding(
