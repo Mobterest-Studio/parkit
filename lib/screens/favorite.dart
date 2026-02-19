@@ -1,13 +1,17 @@
 import 'package:empty_widget/empty_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_carparking_app/arguments.dart';
+import 'package:supabase_carparking_app/constants/config.dart';
+import 'package:supabase_carparking_app/constants/constant.dart';
+import 'package:supabase_carparking_app/provider/supabase_provider.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
 import 'package:supabase_carparking_app/screens/parking_area.dart';
-import '../constants/config.dart';
-import '../constants/constant.dart';
 
 class Favorite extends StatefulWidget {
   const Favorite({super.key});
+
+  static const routeName = '/favorite';
 
   @override
   State<Favorite> createState() => _FavoriteState();
@@ -26,6 +30,9 @@ class _FavoriteState extends State<Favorite> {
 
   @override
   Widget build(BuildContext context) {
+    // read() — userId is stable for the lifetime of this page.
+    final userId = context.read<SupabaseProvider>().userId;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("My Favourites",
@@ -48,8 +55,7 @@ class _FavoriteState extends State<Favorite> {
                   } else {
                     search = true;
                     searchList = await ParkingRepository()
-                            .searchFavourite(context, value) ??
-                        [];
+                        .searchFavourite(userId, value);
                   }
                   setState(() {});
                 },
@@ -116,9 +122,15 @@ class _FavoriteState extends State<Favorite> {
                                   Icons.remove_circle,
                                   color: redColor,
                                 ),
-                                onPressed: () {
-                                  ParkingRepository().removeFavourite(
-                                      context, searchList[index]['id']);
+                                onPressed: () async {
+                                  try {
+                                    await ParkingRepository().removeFavourite(
+                                        searchList[index]['id']);
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text(e.toString())));
+                                  }
                                   setState(() {});
                                 },
                               ),
@@ -136,7 +148,7 @@ class _FavoriteState extends State<Favorite> {
                   height: MediaQuery.of(context).size.height * 0.68,
                   padding: const EdgeInsets.all(10.0),
                   child: FutureBuilder(
-                    future: ParkingRepository().getMyFavorites(context),
+                    future: ParkingRepository().getMyFavorites(userId),
                     builder: (context, snapshot) {
                       List<Map<String, dynamic>> response = snapshot.data ?? [];
 
@@ -179,9 +191,17 @@ class _FavoriteState extends State<Favorite> {
                                       Icons.remove_circle,
                                       color: redColor,
                                     ),
-                                    onPressed: () {
-                                      ParkingRepository().removeFavourite(
-                                          context, response[index]['id']);
+                                    onPressed: () async {
+                                      try {
+                                        await ParkingRepository()
+                                            .removeFavourite(
+                                                response[index]['id']);
+                                      } catch (e) {
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(SnackBar(
+                                                content: Text(e.toString())));
+                                      }
                                       setState(() {});
                                     },
                                   ),

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../constants/config.dart';
+import 'package:supabase_carparking_app/constants/config.dart';
 
 class Notifications extends StatefulWidget {
   const Notifications({super.key});
+
+  static const routeName = '/notification';
 
   @override
   State<Notifications> createState() => _NotificationsState();

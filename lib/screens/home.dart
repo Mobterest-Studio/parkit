@@ -3,14 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:supabase_carparking_app/arguments.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
 import 'package:supabase_carparking_app/screens/parking_area.dart';
+import 'package:supabase_carparking_app/constants/config.dart';
+import 'package:supabase_carparking_app/constants/constant.dart';
+import 'package:supabase_carparking_app/main.dart';
+import 'package:supabase_carparking_app/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../constants/config.dart';
-import '../constants/constant.dart';
-import '../main.dart';
-import '../widgets.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
+
+  static const routeName = '/home';
 
   @override
   State<Home> createState() => _HomeState();
@@ -79,7 +81,7 @@ class _HomeState extends State<Home> {
                     } else {
                       search = true;
                       searchList = await ParkingRepository()
-                          .searchParkingArea(context, value);
+                          .searchParkingArea(value);
                     }
 
                     setState(() {});
@@ -171,7 +173,7 @@ class _HomeState extends State<Home> {
                     height: MediaQuery.of(context).size.height * 0.68,
                     padding: const EdgeInsets.all(10.0),
                     child: FutureBuilder(
-                        future: ParkingRepository().getParkingareas(context),
+                        future: ParkingRepository().getParkingareas(),
                         builder: (context, snapshot) {
                           List<Map<String, dynamic>> parkingareas =
                               snapshot.data ?? [];

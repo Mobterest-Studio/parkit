@@ -4,13 +4,16 @@ import 'package:intl/intl.dart';
 import 'package:supabase_carparking_app/arguments.dart';
 import 'package:supabase_carparking_app/constants/config.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
-
-import '../constants/constant.dart';
-import '../widgets.dart';
-import 'parking_timer.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_carparking_app/provider/supabase_provider.dart';
+import 'package:supabase_carparking_app/constants/constant.dart';
+import 'package:supabase_carparking_app/screens/parking_timer.dart';
+import 'package:supabase_carparking_app/widgets.dart';
 
 class Booking extends StatefulWidget {
   const Booking({super.key});
+
+  static const routeName = '/booking';
 
   @override
   State<Booking> createState() => _BookingState();
@@ -19,6 +22,9 @@ class Booking extends StatefulWidget {
 class _BookingState extends State<Booking> {
   @override
   Widget build(BuildContext context) {
+    // read() is used here (not watch()) because userId is stable for the
+    // lifetime of this page — no rebuild needed when it changes.
+    final userId = context.read<SupabaseProvider>().userId;
     return Scaffold(
       appBar: AppBar(
         leading: Image.asset(appIcon),
@@ -33,7 +39,7 @@ class _BookingState extends State<Booking> {
           Padding(
               padding: const EdgeInsets.only(left: 10.0, top: 20.0),
               child: FutureBuilder(
-                future: ParkingRepository().getTotalFee(context),
+                future: ParkingRepository().getTotalFee(userId),
                 builder: (context, snapshot) {
                   double response = snapshot.data ?? 0;
 
@@ -56,7 +62,7 @@ class _BookingState extends State<Booking> {
           SizedBox(
               height: MediaQuery.of(context).size.height * 0.68,
               child: FutureBuilder(
-                future: ParkingRepository().getAllBookings(context),
+                future: ParkingRepository().getAllBookings(userId),
                 builder: (context, snapshot) {
                   List<Map<String, dynamic>> response = snapshot.data ?? [];
 

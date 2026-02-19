@@ -2,10 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:sign_in_button/sign_in_button.dart';
 import 'package:supabase_carparking_app/constants/config.dart';
 import 'package:supabase_carparking_app/constants/constant.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_carparking_app/provider/supabase_provider.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
+import 'package:supabase_carparking_app/screens/flutter_auth_ui.dart';
+import 'package:supabase_carparking_app/screens/home.dart';
+import 'package:supabase_carparking_app/screens/signup.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
+
+  static const routeName = '/';
 
   @override
   State<Login> createState() => _LoginState();
@@ -100,11 +107,25 @@ class _LoginState extends State<Login> {
                         padding: const EdgeInsets.only(top: 10.0),
                         child: ElevatedButton(
                           onPressed: () async {
-                            if (_loginFormKey.currentState!.validate()) {
-                              await ParkingRepository().signInUser(
-                                  emailController.text,
-                                  passController.text,
-                                  context);
+                            if (!_loginFormKey.currentState!.validate()) return;
+                            // Capture provider before any await so we never
+                            // call context.read() across an async gap.
+                            final provider =
+                                context.read<SupabaseProvider>();
+                            try {
+                              final profile = await ParkingRepository()
+                                  .signInUser(emailController.text,
+                                      passController.text);
+                              if (profile.isNotEmpty) {
+                                provider.setProfileId(profile[0]['id']);
+                                provider.setSignedStatus(true);
+                              }
+                              if (!context.mounted) return;
+                              Navigator.pushNamed(context, Home.routeName);
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(e.toString())));
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -133,7 +154,7 @@ class _LoginState extends State<Login> {
                 elevation: 4.0,
                 shape: const StadiumBorder(),
                 onPressed: () {
-                  ParkingRepository().signInWithGoogle(context);
+                  ParkingRepository().signInWithGoogle();
                 },
               ),
             ),
@@ -147,7 +168,7 @@ class _LoginState extends State<Login> {
                 text: "Sign in with Facebook",
                 shape: const StadiumBorder(),
                 onPressed: () {
-                  ParkingRepository().signInWithFacebook(context);
+                  ParkingRepository().signInWithFacebook();
                 },
               ),
             ),
@@ -155,7 +176,7 @@ class _LoginState extends State<Login> {
               padding: const EdgeInsets.only(top: 10.0),
               child: OutlinedButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, "/flutterauthui");
+                    Navigator.pushNamed(context, FlutterAuthUI.routeName);
                   },
                   child: const Text("Using Flutter Auth UI")),
             ),
@@ -164,7 +185,7 @@ class _LoginState extends State<Login> {
               padding: const EdgeInsets.only(bottom: 10.0),
               child: TextButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, "/signup");
+                    Navigator.pushNamed(context, Signup.routeName);
                   },
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.black,

@@ -4,16 +4,18 @@ import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:supabase_carparking_app/arguments.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
 import 'package:supabase_carparking_app/screens/parking_details.dart';
-import '../constants/config.dart';
-import '../constants/constant.dart';
+import 'package:supabase_carparking_app/constants/config.dart';
+import 'package:supabase_carparking_app/constants/constant.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_carparking_app/provider/supabase_provider.dart';
 
 class ParkingArea extends StatefulWidget {
   const ParkingArea({super.key});
 
+  static const routeName = '/area';
+
   @override
   State<ParkingArea> createState() => _ParkingAreaState();
-
-  static const routeName = "/area";
 }
 
 class _ParkingAreaState extends State<ParkingArea> {
@@ -74,8 +76,8 @@ class _ParkingAreaState extends State<ParkingArea> {
                     Padding(
                         padding: const EdgeInsets.only(left: 8.0),
                         child: FutureBuilder(
-                          future: ParkingRepository().getAvailableSlots(
-                              context, args.parkingarea['id']),
+                          future: ParkingRepository()
+                              .getAvailableSlots(args.parkingarea['id']),
                           builder: (context, snapshot) {
                             int availableSlots = snapshot.data ?? 0;
 
@@ -148,8 +150,40 @@ class _ParkingAreaState extends State<ParkingArea> {
                       label: const Text("Share")),
                   OutlinedButton.icon(
                       onPressed: () async {
-                        await ParkingRepository()
-                            .saveAsFavorite(args.parkingarea['id'], context);
+                        try {
+                          await ParkingRepository().saveAsFavorite(
+                              context.read<SupabaseProvider>().userId,
+                              args.parkingarea['id']);
+                          if (!context.mounted) return;
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              icon: const Icon(Icons.check,
+                                  color: brandColor, size: 50),
+                              content: const Text(
+                                "Added to your favourites!",
+                                style:
+                                    TextStyle(fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center,
+                              ),
+                              actions: [
+                                Align(
+                                  alignment: Alignment.center,
+                                  child: IconButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context),
+                                    icon: const Icon(Icons.thumb_up,
+                                        color: secondaryColor),
+                                  ),
+                                )
+                              ],
+                            ),
+                          );
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString())));
+                        }
                       },
                       style: OutlinedButton.styleFrom(
                           foregroundColor: secondaryColor),

@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_carparking_app/constants/config.dart';
-import 'package:supabase_carparking_app/main.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_carparking_app/provider/supabase_provider.dart';
 import 'package:supabase_carparking_app/models/parking_model.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
+import 'package:supabase_carparking_app/arguments.dart';
+import 'package:supabase_carparking_app/constants/constant.dart';
 import 'package:supabase_carparking_app/screens/parking_lot.dart';
-import '../arguments.dart';
-import '../constants/constant.dart';
+import 'package:supabase_carparking_app/screens/profile_signup.dart';
 
 class ParkingDetails extends StatefulWidget {
   const ParkingDetails({super.key});
@@ -54,6 +56,7 @@ class _ParkingDetailsState extends State<ParkingDetails> {
   @override
   Widget build(BuildContext context) {
     final args = ModalRoute.of(context)!.settings.arguments as ParkingArguments;
+    final userId = context.read<SupabaseProvider>().userId;
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -132,7 +135,7 @@ class _ParkingDetailsState extends State<ParkingDetails> {
               ),
             ),
             FutureBuilder(
-              future: ParkingRepository().getMyVehicles(context),
+              future: ParkingRepository().getMyVehicles(userId),
               builder: (context, snapshot) {
                 List<Map<String, dynamic>> response = snapshot.data ?? [];
 
@@ -174,7 +177,7 @@ class _ParkingDetailsState extends State<ParkingDetails> {
             ),
             TextButton.icon(
                 onPressed: () {
-                  Navigator.pushNamed(context, '/profilesignup');
+                  Navigator.pushNamed(context, ProfileSignUp.routeName);
                 },
                 style: TextButton.styleFrom(foregroundColor: secondaryColor),
                 icon: const Icon(Icons.add_circle),
@@ -221,14 +224,17 @@ class _ParkingDetailsState extends State<ParkingDetails> {
                             dropdownValue == null)
                         ? null
                         : () {
-                            supabaseProvider.setParking(Parking(
+                            // read() is used here instead of watch() because
+                            // this runs inside a callback, not a build phase.
+                            final provider = context.read<SupabaseProvider>();
+                            provider.setParking(Parking(
                                 parkingDate: formattedDate,
                                 entryTime: entryTime,
                                 durationInHours:
                                     int.parse(durationController.text),
                                 exitTime: exitTime,
                                 parkingArea: args.parkingarea,
-                                userId: supabaseProvider.userId,
+                                userId: provider.userId,
                                 vehicleId: dropdownValue!['id'],
                                 parkingSlotId: null));
                             Navigator.pushNamed(context, ParkingLot.routeName,

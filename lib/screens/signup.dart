@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:sign_in_button/sign_in_button.dart';
+import 'package:supabase_carparking_app/constants/config.dart';
 import 'package:supabase_carparking_app/constants/constant.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
-
-import '../constants/config.dart';
+import 'package:supabase_carparking_app/screens/email_verification.dart';
+import 'package:supabase_carparking_app/screens/login.dart';
 
 class Signup extends StatefulWidget {
   const Signup({super.key});
 
+  static const routeName = '/signup';
+
   @override
-  State<Signup> createState() => _LoginState();
+  State<Signup> createState() => _SignupState();
 }
 
-class _LoginState extends State<Signup> {
+class _SignupState extends State<Signup> {
   final _signupFormKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passController = TextEditingController();
@@ -98,11 +101,27 @@ class _LoginState extends State<Signup> {
                               padding: const EdgeInsets.only(top: 10.0),
                               child: ElevatedButton(
                                 onPressed: () async {
-                                  if (_signupFormKey.currentState!.validate()) {
+                                  if (!_signupFormKey.currentState!
+                                      .validate()) {
+                                    return;
+                                  }
+                                  final email = emailController.text;
+                                  try {
                                     await ParkingRepository().createAccount(
-                                        emailController.text,
-                                        passController.text,
-                                        context);
+                                        email, passController.text);
+                                    if (!context.mounted) return;
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => EmailVerification(
+                                            emailAddress: email),
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                            content: Text(e.toString())));
                                   }
                                 },
                                 style: ElevatedButton.styleFrom(
@@ -148,7 +167,7 @@ class _LoginState extends State<Signup> {
                   padding: const EdgeInsets.only(bottom: 10.0),
                   child: TextButton(
                       onPressed: () {
-                        Navigator.pushNamed(context, "/");
+                        Navigator.pushNamed(context, Login.routeName);
                       },
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.black,

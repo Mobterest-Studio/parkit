@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'package:supabase_carparking_app/arguments.dart';
 import 'package:supabase_carparking_app/constants/config.dart';
+import 'package:supabase_carparking_app/constants/constant.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
-import '../arguments.dart';
-import '../constants/constant.dart';
+import 'package:supabase_carparking_app/screens/home.dart';
 
 class ParkingTicket extends StatefulWidget {
   const ParkingTicket({super.key});
@@ -70,8 +71,8 @@ class _ParkingTicketState extends State<ParkingTicket> {
                 endIndent: 20,
               ),
               FutureBuilder(
-                future: ParkingRepository().getSpecificVehicle(
-                    context, args.parkingarea['vehicle_id']),
+                future: ParkingRepository()
+                    .getSpecificVehicle(args.parkingarea['vehicle_id']),
                 builder: (context, snapshot) {
                   List<Map<String, dynamic>> response = snapshot.data ?? [];
 
@@ -133,8 +134,8 @@ class _ParkingTicketState extends State<ParkingTicket> {
                       ],
                     ),
                     FutureBuilder(
-                      future: ParkingRepository().getSpecificSlot(
-                          context, args.parkingarea['parking_slot_id']),
+                      future: ParkingRepository()
+                          .getSpecificSlot(args.parkingarea['parking_slot_id']),
                       builder: (context, snapshot) {
                         List<Map<String, dynamic>> response =
                             snapshot.data ?? [];
@@ -236,7 +237,7 @@ class _ParkingTicketState extends State<ParkingTicket> {
           padding: const EdgeInsets.all(30.0),
           child: ElevatedButton(
               onPressed: () {
-                Navigator.pushNamed(context, "/home");
+                Navigator.pushNamed(context, Home.routeName);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: secondaryColor,

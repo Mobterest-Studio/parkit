@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'package:supabase_carparking_app/arguments.dart';
+import 'package:supabase_carparking_app/constants/config.dart';
+import 'package:supabase_carparking_app/constants/constant.dart';
+import 'package:supabase_carparking_app/screens/home.dart';
 import 'package:supabase_carparking_app/screens/parking_ticket.dart';
 import 'dart:async';
-
-import '../arguments.dart';
-import '../constants/config.dart';
-import '../constants/constant.dart';
 
 class ParkingTimer extends StatefulWidget {
   const ParkingTimer({super.key});
@@ -140,7 +140,7 @@ class _ParkingTimerState extends State<ParkingTimer> {
           padding: const EdgeInsets.all(30.0),
           child: ElevatedButton(
               onPressed: () {
-                Navigator.pushNamed(context, "/home");
+                Navigator.pushNamed(context, Home.routeName);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: secondaryColor,

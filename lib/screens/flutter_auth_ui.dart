@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_auth_ui/supabase_auth_ui.dart';
+import 'package:supabase_carparking_app/constants/constant.dart';
 import 'package:supabase_carparking_app/screens/email_verification.dart';
-
-import '../constants/constant.dart';
+import 'package:supabase_carparking_app/screens/home.dart';
 
 class FlutterAuthUI extends StatefulWidget {
   const FlutterAuthUI({super.key});
+
+  static const routeName = '/flutterauthui';
 
   @override
   State<FlutterAuthUI> createState() => _FlutterAuthUIState();
@@ -54,7 +56,7 @@ class _FlutterAuthUIState extends State<FlutterAuthUI> {
               SupaEmailAuth(
                 redirectTo: kIsWeb ? null : 'io.mydomain.myapp://callback',
                 onSignInComplete: (response) {
-                  Navigator.pushNamed(context, "/home");
+                  Navigator.pushNamed(context, Home.routeName);
                 },
                 onSignUpComplete: (response) {
                   Navigator.push(

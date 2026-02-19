@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_carparking_app/main.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_carparking_app/provider/supabase_provider.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
-import '../constants/config.dart';
-import '../constants/constant.dart';
+import 'package:supabase_carparking_app/constants/config.dart';
+import 'package:supabase_carparking_app/constants/constant.dart';
+import 'package:supabase_carparking_app/screens/login.dart';
 
 class ProfileSignUp extends StatefulWidget {
   const ProfileSignUp({super.key});
+
+  static const routeName = '/profilesignup';
 
   @override
   State<ProfileSignUp> createState() => _ProfileSignUpState();
@@ -32,9 +36,12 @@ class _ProfileSignUpState extends State<ProfileSignUp> {
 
   @override
   Widget build(BuildContext context) {
+    // watch() subscribes to SupabaseProvider so the widget rebuilds whenever
+    // signedIn changes (e.g. after sign-in completes).
+    final provider = context.watch<SupabaseProvider>();
     return Scaffold(
       appBar: AppBar(
-        leading: (supabaseProvider.signedIn) ? null : Image.asset(appIcon),
+        leading: (provider.signedIn) ? null : Image.asset(appIcon),
       ),
       body: Padding(
         padding: const EdgeInsets.only(left: 20, right: 20),
@@ -55,16 +62,16 @@ class _ProfileSignUpState extends State<ProfileSignUp> {
                   child: Column(
                     children: [
                       Visibility(
-                          visible: !supabaseProvider.signedIn,
+                          visible: !provider.signedIn,
                           child:
                               const Text("Set up your user and car profile")),
                       Visibility(
-                          visible: supabaseProvider.signedIn,
+                          visible: provider.signedIn,
                           child: const Text("Set up your car profile"))
                     ],
                   )),
               Visibility(
-                  visible: !supabaseProvider.signedIn,
+                  visible: !provider.signedIn,
                   child: Column(
                     children: [
                       Padding(
@@ -173,20 +180,40 @@ class _ProfileSignUpState extends State<ProfileSignUp> {
                     children: [
                       ElevatedButton(
                         onPressed: () async {
-                          if (!supabaseProvider.signedIn) {
-                            await ParkingRepository().updateUserProfile(
-                                nameController.text,
-                                phoneController.text,
-                                carModelController.text,
-                                carNumberController.text,
-                                dropdownValue,
-                                context);
-                          } else {
-                            await ParkingRepository().addCarProfile(
-                                carModelController.text,
-                                carNumberController.text,
-                                dropdownValue,
-                                context);
+                          if (!_profileFormKey.currentState!.validate()) return;
+                          try {
+                            if (!provider.signedIn) {
+                              // New sign-up flow: create profile row first,
+                              // get back the assigned id, then add the car.
+                              final profileId = await ParkingRepository()
+                                  .updateUserProfile(
+                                      nameController.text,
+                                      phoneController.text,
+                                      carModelController.text,
+                                      carNumberController.text,
+                                      dropdownValue);
+                              provider.setProfileId(profileId);
+                              await ParkingRepository().addCarProfile(
+                                  carModelController.text,
+                                  carNumberController.text,
+                                  dropdownValue,
+                                  profileId);
+                              if (!context.mounted) return;
+                              Navigator.pushNamed(context, Login.routeName);
+                            } else {
+                              // Existing user adding another vehicle.
+                              await ParkingRepository().addCarProfile(
+                                  carModelController.text,
+                                  carNumberController.text,
+                                  dropdownValue,
+                                  provider.profileId);
+                              if (!context.mounted) return;
+                              Navigator.pop(context);
+                            }
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.toString())));
                           }
                         },
                         style: ElevatedButton.styleFrom(

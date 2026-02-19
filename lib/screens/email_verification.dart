@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:supabase_carparking_app/constants/config.dart';
+import 'package:supabase_carparking_app/constants/constant.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
-
-import '../constants/constant.dart';
+import 'package:supabase_carparking_app/screens/profile_signup.dart';
 
 class EmailVerification extends StatefulWidget {
   final String emailAddress;
@@ -97,8 +97,17 @@ class _EmailVerificationState extends State<EmailVerification> {
                   )
                 ],
                 onCompleted: (v) async {
-                  await ParkingRepository().verifyOTP(
-                      widget.emailAddress, otpController.text, context);
+                  try {
+                    await ParkingRepository()
+                        .verifyOTP(widget.emailAddress, otpController.text);
+                    if (!context.mounted) return;
+                    Navigator.pushNamed(context, ProfileSignUp.routeName);
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    errorController?.add(ErrorAnimationType.shake);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(e.toString())));
+                  }
                 },
                 onChanged: (value) {
                   setState(() {
@@ -112,10 +121,21 @@ class _EmailVerificationState extends State<EmailVerification> {
             ),
             Row(
               children: [
-                const Text("Didn’t get any email?"),
+                const Text("Didn't get any email?"),
                 TextButton(
                     onPressed: () async {
-                      await ParkingRepository().resendOTP(context);
+                      try {
+                        await ParkingRepository().resendOTP();
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    "A new OTP has been sent to your email.")));
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.toString())));
+                      }
                     },
                     child: const Text(
                       "Resend code",

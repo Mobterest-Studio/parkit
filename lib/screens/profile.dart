@@ -1,14 +1,19 @@
 import 'package:empty_widget/empty_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_carparking_app/main.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_carparking_app/constants/config.dart';
+import 'package:supabase_carparking_app/constants/constant.dart';
+import 'package:supabase_carparking_app/provider/supabase_provider.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
-
-import '../constants/config.dart';
-import '../constants/constant.dart';
-import '../widgets.dart';
+import 'package:supabase_carparking_app/screens/favorite.dart';
+import 'package:supabase_carparking_app/screens/login.dart';
+import 'package:supabase_carparking_app/screens/notification.dart';
+import 'package:supabase_carparking_app/widgets.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
+
+  static const routeName = '/profile';
 
   @override
   State<Profile> createState() => _ProfileState();
@@ -19,6 +24,9 @@ class _ProfileState extends State<Profile> {
 
   @override
   Widget build(BuildContext context) {
+    final profileId = context.read<SupabaseProvider>().profileId;
+    final userId = context.read<SupabaseProvider>().userId;
+
     return Scaffold(
         appBar: AppBar(
           leading: Image.asset(appIcon),
@@ -31,27 +39,28 @@ class _ProfileState extends State<Profile> {
         body: Column(
           children: [
             FutureBuilder(
-              future: ParkingRepository().getUserProfile(context),
+              future: ParkingRepository().getUserProfile(profileId),
               builder: (context, snapshot) {
                 List<Map<String, dynamic>> response = snapshot.data ?? [];
                 return Column(
                   children: [
                     GestureDetector(
                         onTap: () async {
-                          setState(() {
-                            showIndicator = true;
-                          });
-                          await ParkingRepository().uploadProfile(context);
-                          Future.delayed(const Duration(seconds: 2), () {
-                            if (mounted) {
-                              setState(() {
-                                showIndicator = false;
-                              });
+                          setState(() => showIndicator = true);
+                          try {
+                            await ParkingRepository().uploadProfile();
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(e.toString())));
                             }
+                          }
+                          Future.delayed(const Duration(seconds: 2), () {
+                            if (mounted) setState(() => showIndicator = false);
                           });
                         },
                         child: FutureBuilder(
-                          future: ParkingRepository().downloadProfile(context),
+                          future: ParkingRepository().downloadProfile(),
                           builder: (context, snapshot) {
                             String? image = snapshot.data;
 
@@ -86,17 +95,31 @@ class _ProfileState extends State<Profile> {
                                         right: -10,
                                         child: IconButton(
                                           onPressed: () async {
-                                            setState(() {
-                                              showIndicator = true;
-                                            });
-                                            await ParkingRepository()
-                                                .deleteProfile(context, image);
+                                            setState(
+                                                () => showIndicator = true);
+                                            try {
+                                              await ParkingRepository()
+                                                  .deleteProfile(image);
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(const SnackBar(
+                                                        content: Text(
+                                                            "Profile image deleted.")));
+                                              }
+                                            } catch (e) {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(SnackBar(
+                                                        content: Text(
+                                                            e.toString())));
+                                              }
+                                            }
                                             Future.delayed(
-                                                const Duration(seconds: 2), () {
+                                                const Duration(seconds: 2),
+                                                () {
                                               if (mounted) {
-                                                setState(() {
-                                                  showIndicator = false;
-                                                });
+                                                setState(() =>
+                                                    showIndicator = false);
                                               }
                                             });
                                           },
@@ -160,7 +183,7 @@ class _ProfileState extends State<Profile> {
                           height: 200,
                           padding: const EdgeInsets.only(top: 10, left: 20),
                           child: FutureBuilder(
-                            future: ParkingRepository().getMyVehicles(context),
+                            future: ParkingRepository().getMyVehicles(userId),
                             builder: (context, snapshot) {
                               List<Map<String, dynamic>> response =
                                   snapshot.data ?? [];
@@ -209,40 +232,31 @@ class _ProfileState extends State<Profile> {
               },
             ),
             ListTile(
-              leading: const Icon(
-                Icons.favorite,
-                color: brandColor,
-              ),
-              title: const Text(
-                "My Favourites",
-                style: TextStyle(fontSize: 14),
-              ),
+              leading: const Icon(Icons.favorite, color: brandColor),
+              title: const Text("My Favourites", style: TextStyle(fontSize: 14)),
               trailing: const Icon(Icons.arrow_right),
-              onTap: () {
-                Navigator.pushNamed(context, "/favorite");
-              },
+              onTap: () => Navigator.pushNamed(context, Favorite.routeName),
             ),
             ListTile(
-              leading: const Icon(
-                Icons.notifications,
-                color: brandColor,
-              ),
-              title: const Text(
-                "Notifications",
-                style: TextStyle(fontSize: 14),
-              ),
+              leading: const Icon(Icons.notifications, color: brandColor),
+              title:
+                  const Text("Notifications", style: TextStyle(fontSize: 14)),
               trailing: const Icon(Icons.arrow_right),
-              onTap: () {
-                Navigator.pushNamed(context, "/notification");
-              },
+              onTap: () => Navigator.pushNamed(context, Notifications.routeName),
             ),
             Padding(
               padding: const EdgeInsets.only(top: 20.0),
               child: ElevatedButton(
                   onPressed: () async {
-                    await supabase.auth.signOut();
-                    if (context.mounted) {
-                      Navigator.pushNamed(context, "/");
+                    try {
+                      await ParkingRepository().signOut();
+                      if (!context.mounted) return;
+                      Navigator.pushNamedAndRemoveUntil(
+                          context, Login.routeName, (route) => false);
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Sign out failed: $e')));
                     }
                   },
                   style: ElevatedButton.styleFrom(

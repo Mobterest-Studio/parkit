@@ -1,11 +1,12 @@
 import 'package:empty_widget/empty_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_carparking_app/arguments.dart';
 import 'package:supabase_carparking_app/constants/config.dart';
-import 'package:supabase_carparking_app/main.dart';
+import 'package:supabase_carparking_app/constants/constant.dart';
+import 'package:supabase_carparking_app/provider/supabase_provider.dart';
 import 'package:supabase_carparking_app/repository/parking_repository.dart';
-import '../arguments.dart';
-import '../constants/constant.dart';
-import '../models/parking_model.dart';
+import 'package:supabase_carparking_app/screens/home.dart';
 
 class ParkingLot extends StatefulWidget {
   const ParkingLot({super.key});
@@ -71,7 +72,7 @@ class _ParkingLotState extends State<ParkingLot> {
                   height: 100,
                   child: FutureBuilder(
                     future: ParkingRepository()
-                        .getFloorsByParkingLot(context, args.parkingarea['id']),
+                        .getFloorsByParkingLot(args.parkingarea['id']),
                     builder: (context, snapshot) {
                       List<Map<String, dynamic>> response = snapshot.data ?? [];
 
@@ -107,12 +108,9 @@ class _ParkingLotState extends State<ParkingLot> {
                               backgroundColor: floorColors[index],
                               onPressed: () async {
                                 slots = await ParkingRepository()
-                                        .getSlotsbyParkingFloor(
-                                            context,
-                                            response[index]['parkingfloor']
-                                                ['id'],
-                                            args.parkingarea['id']) ??
-                                    [];
+                                    .getSlotsbyParkingFloor(
+                                        response[index]['parkingfloor']['id'],
+                                        args.parkingarea['id']);
                                 slotColor = List.generate(
                                     slots.length, (i) => Colors.white);
                                 setState(() {});
@@ -120,9 +118,7 @@ class _ParkingLotState extends State<ParkingLot> {
                             );
                           },
                           separatorBuilder: (BuildContext context, int index) {
-                            return const SizedBox(
-                              width: 10,
-                            );
+                            return const SizedBox(width: 10);
                           },
                           itemCount: response.length,
                         );
@@ -194,18 +190,33 @@ class _ParkingLotState extends State<ParkingLot> {
               onPressed: (selectedSlot.isEmpty)
                   ? null
                   : () async {
-                      Parking parking = supabaseProvider.parking;
+                      // read() is used here (not watch()) because this runs
+                      // inside a callback, not during the build phase.
+                      final parking =
+                          context.read<SupabaseProvider>().parking;
                       parking.parkingSlotId = selectedSlot['id'];
 
-                      await ParkingRepository().saveParkingDetail(
-                          context,
-                          parking.parkingDate,
-                          parking.entryTime,
-                          parking.durationInHours,
-                          parking.exitTime,
-                          parking.parkingArea,
-                          parking.vehicleId,
-                          parking.parkingSlotId!);
+                      try {
+                        await ParkingRepository().saveParkingDetail(
+                            parking.parkingDate,
+                            parking.entryTime,
+                            parking.durationInHours,
+                            parking.exitTime,
+                            parking.parkingArea,
+                            parking.userId,
+                            parking.vehicleId,
+                            parking.parkingSlotId!);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    "You have successfully booked your parking slot")));
+                        Navigator.pushNamed(context, Home.routeName);
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Booking failed: $e")));
+                      }
                     },
               style: ElevatedButton.styleFrom(
                 backgroundColor: secondaryColor,
